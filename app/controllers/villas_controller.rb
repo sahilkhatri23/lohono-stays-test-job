@@ -1,19 +1,29 @@
 class VillasController < ApplicationController
-  before_action :set_villa, only: [:calculate_price]
-  before_action :set_dates, only: [:index, :calculate_price]
+  before_action :set_villa, only: [ :calculate_price ]
+  before_action :validate_dates, only: [ :index, :calculate_price ]
 
   def index
-    villas = Villa.available_for_dates(@check_in, @check_out).sorted_by(params[:sort_by], params[:sort_order])
+    sort_by_price = params[:sort_by_price]&.downcase == "desc" ? "DESC" : "ASC"
+    villas = Villa.available_for_dates(@check_in, @check_out, sort_by_price)
     render json: { villas: villas }
   end
 
   def calculate_price
-    if @villa.available_for_dates?(@check_in, @check_out)
-      render json: { available: true, total_price: @villa.calculate_price(@check_in, @check_out) }
-    else
-      render json: { available: false, message: "Villa is not available for the selected dates." }, status: :unprocessable_entity
+    total_nights = (@check_out.to_date - @check_in.to_date).to_i
+
+    available_calendars = @villa.villa_calendars
+      .where(date: @check_in...@check_out)
+      .pluck(:price, :is_available)
+
+    if available_calendars.size != total_nights || available_calendars.any? { |available| available[1] == false }
+      return render json: { available: false, message: "Villa is not available for the full requested period" }, status: :unprocessable_entity
     end
+
+    total_price = available_calendars.sum { |price| price[0] } * 1.18
+
+    render json: { available: true, total_price: total_price.round }
   end
+
 
   private
 
@@ -23,17 +33,12 @@ class VillasController < ApplicationController
     render json: { error: "Villa not found" }, status: :not_found
   end
 
-  def set_dates
-    return render json: { message: 'Check-in and check-out dates are required.' }, status: :bad_request unless params[:check_in] && params[:check_out]
+  def validate_dates
+    @check_in = params[:check_in]
+    @check_out = params[:check_out]
 
-    @check_in = DateTime.parse(params[:check_in]).change(hour: 11)
-    @check_out = DateTime.parse(params[:check_out]).change(hour: 10)
-
-    if @check_out <= @check_in
-      render json: { message: 'Check-out date must be after check-in date.' }, status: :bad_request
-      @check_in = @check_out = nil
+    if @check_in.blank? || @check_out.blank?
+      render json: { error: "Check-in and check-out dates are required" }, status: :unprocessable_entity
     end
-  rescue ArgumentError
-    render json: { message: 'Invalid date format.' }, status: :bad_request
   end
 end

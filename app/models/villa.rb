@@ -1,24 +1,31 @@
 class Villa < ApplicationRecord
-  has_many :bookings
+  has_many :villa_calendars, dependent: :destroy
 
-  scope :available_for_dates, ->(check_in, check_out) {
-    where.not(id: Booking.where(
-      "(check_in < ? AND check_out > ?) OR (check_out = ? AND check_out::time > '10:00:00')",
-      check_out, check_in, check_in
-    ).select(:villa_id))
+  after_create :generate_calendar
+
+  scope :available_for_dates, ->(check_in, check_out, order) {
+    joins(:villa_calendars)
+    .where(
+      "villa_calendars.date >= ? AND villa_calendars.date < ? AND villa_calendars.is_available = ?",
+      check_in, check_out, true
+    )
+    .group("villas.id")
+    .having("COUNT(villa_calendars.id) = ?", (check_out.to_date - check_in.to_date).to_i)
+    .select("villas.*, AVG(villa_calendars.price) AS average_price_per_night")
+    .order("average_price_per_night #{order}")
   }
 
-  scope :sorted_by, ->(sort_by, sort_order) {
-    return all unless sort_by == 'price'
-    order(price_per_night: sort_order&.downcase == 'desc' ? :desc : :asc)
-  }
+  private
 
-  def available_for_dates?(check_in, check_out)
-    self.class.available_for_dates(check_in, check_out).exists?(id: self.id)
-  end
+  def generate_calendar
+    start_date = Date.today
+    end_date = start_date + 12.months
 
-  def calculate_price(check_in, check_out)
-    total_nights = (check_out.to_date - check_in.to_date).to_i
-    (total_nights * price_per_night) * 1.18
+    (start_date..end_date).each do |date|
+      villa_calendars.create!(
+        date: date,
+        price: rand(30_000..50_000)
+      )
+    end
   end
 end
