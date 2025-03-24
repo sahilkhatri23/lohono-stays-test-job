@@ -1,131 +1,98 @@
-# 🏡 Villa Booking API
+# Villa Booking API
 
-This API helps users find available villas and check their prices efficiently.  
-It ensures that villas are only shown when available and calculates prices including GST.
+This API allows users to find available villas and check their prices efficiently. It ensures that villas are only shown when available and calculates prices including GST.
 
----
+## Setup Instructions
 
-## ⚡️ Setup Instructions
-
-Follow these steps to set up and run the project:
-
-### 1️⃣ **Clone the Repository**
+### Clone the Repository
 ```sh
 git clone https://github.com/sahilkhatri23/lohono-stays-test-job.git
 cd lohono-stays-test-job
 ```
 
-### 2️⃣ **Install Dependencies**
-Ensure you have **Ruby** and **Bundler** installed, then run:
+### Install Dependencies
+Ensure Ruby and Bundler are installed, then run:
 ```sh
 bundle install
 ```
 
-### 3️⃣ **Setup the Database**
-This app uses **PostgreSQL**, so ensure it's installed and running.  
-Then, create and migrate the database:
+### Setup the Database
+This application uses PostgreSQL. Ensure it is installed and running, then run:
 ```sh
 rails db:create
 rails db:migrate
 ```
 
-### 4️⃣ **Seed Fake Data (Generate Villas & Bookings)**
-To populate the database with **50 villas and 100 random bookings**, run:
-```sh
-rails db:seed
-```
-
-### 5️⃣ **Start the Rails Server**
-Run the following command to start the API server:
+### Start the Rails Server
 ```sh
 rails s
 ```
-Your API will be available at:  
-📍 **http://localhost:3000**
+The API will be available at `http://localhost:3000`.
 
----
+## API Endpoints
 
-## 📌 **API Endpoints**
-### 1️⃣ **Get Available Villas**
-**Fetch villas that are available between selected dates and sort them by price (ascending or descending).**
+### Get Available Villas
+Fetch villas that are available between selected dates and sort them by price.
 ```sh
-GET /villas?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD&sort_by=price&sort_order=asc|desc
+GET /villas?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD&sort_by_price=asc|desc
 ```
-#### **🔹 How It Works**
-- The API **checks if the villa is available** for all requested nights.
-- If available, the villa is **included in the response**.
-- You can **sort results** by `price` (ascending or descending).
 
-#### **📌 Example Request**
+#### Example Request
 ```sh
-GET /villas?check_in=2025-01-10&check_out=2025-01-15&sort_by=price&sort_order=asc
+GET /villas?check_in=2025-01-10&check_out=2025-01-15&sort_by_price=asc
 ```
-#### **✅ Example Response**
+
+#### Example Response
 ```json
 {
   "villas": [
-    { "id": 1, "name": "Ocean View", "price_per_night": 32000 },
-    { "id": 2, "name": "Palm Villa", "price_per_night": 35000 }
+    { "id": 1, "name": "Ocean View", "average_price_per_night": 32000 },
+    { "id": 2, "name": "Palm Villa", "average_price_per_night": 35000 }
   ]
 }
 ```
 
----
-
-### 2️⃣ **Calculate Total Price & Availability**
-**Check if a specific villa is available for the requested dates and calculate the total price including GST.**
+### Calculate Total Price and Availability
+Check if a specific villa is available for the requested dates and calculate the total price including GST.
 ```sh
 GET /villas/:id/calculate_price?check_in=YYYY-MM-DD&check_out=YYYY-MM-DD
 ```
-#### **🔹 How It Works**
-- **Step 1:** The API checks if the villa has any **overlapping bookings**.
-- **Step 2:** If available, the **total price is calculated** as:
-  \[
-  (\text{Number of Nights} × \text{Price Per Night}) + 18\% GST
-  \]
 
-#### **📌 Example Request**
+#### Example Request
 ```sh
 GET /villas/1/calculate_price?check_in=2025-01-10&check_out=2025-01-15
 ```
-#### **✅ Example Response (Available)**
+
+#### Example Response (Available)
 ```json
 {
   "available": true,
   "total_price": 177000
 }
 ```
-#### **❌ Example Response (Not Available)**
+
+#### Example Response (Not Available)
 ```json
 {
   "available": false,
-  "message": "Villa is not available for the selected dates."
+  "message": "Villa is not available for the full requested period"
 }
 ```
 
----
+## How It Works Internally
 
-## 🛠 **How It Works Internally**
-1️⃣ **Checking Availability**  
-- The API looks at all **existing bookings** for a villa.  
-- If a villa is already booked for the requested dates, it **won't be available**.  
+### Checking Availability
+- The API checks if the villa is available for the full requested period.
+- If any date is unavailable, the villa is not included in the response.
 
-2️⃣ **Sorting by Price**  
-- The API allows sorting by **price in ascending or descending order**.  
-- Uses **ActiveRecord scopes** for efficient database queries.  
+### Sorting by Price
+- Villas can be sorted in ascending or descending order based on the average price per night.
 
-3️⃣ **Date Management**  
-- The system **automatically sets** check-in time to **11:00 AM** and check-out time to **10:00 AM**.  
+### Date Management
+- The API ensures that only fully available periods are considered for booking.
 
----
-
-## 🚀 **Future Improvements**
-- ✅ Add **pagination** to handle large villa lists efficiently.
-- ✅ Implement **user authentication** to allow villa booking.
-- ✅ Add **admin panel** to manage villas and bookings.
-- ✅ To speed up repeated requests, availability checks are **cached for 10 minutes**.
-
----
-
-## 🏆 **Conclusion**
-This API efficiently **manages villa availability and pricing**, making it easy to find and book villas dynamically. 🚀  
+## Future Improvements
+- Implement pagination for large villa lists.
+- Add user authentication for booking villas.
+- Develop an admin panel to manage villas and bookings.
+- Optimize database queries for better performance.
